@@ -1,9 +1,17 @@
 import nltk;
 import os;
 from nltk.corpus import wordnet;
-from nltk.tokenize import word_tokenize;
 from nltk.corpus import conll2000;
+from nltk.corpus import sentiwordnet;
+from nltk.tree import *;
+from nltk.tokenize import word_tokenize;
+from nltk.wsd import lesk
+
 os.environ["MEGAM"]='/mnt/c/Users/jsiekmann/AI/megam-64';
+
+
+#Input modification
+REMOVE_ADJ_ADV = True;
 
 partOfSpeech = {
     "CC": "Coordinating Conjunction",
@@ -41,7 +49,7 @@ partOfSpeech = {
     "WDT": "Wh-determiner",
     "WP": "Wh-pronoun",
     "WP$": "Possessive wh-pronoun",
-    "WRB": "Wh-adverb",
+    "WRB": "Wh-adverb", 
     ",": "Comma",
     ".": "Period",
     ":": "Colon",
@@ -50,9 +58,11 @@ partOfSpeech = {
     "NP": "Noun Phrase",
     "PP": "Prepositional Phrase",
     "VB": "Verb Phrase",
-    
+    'v': "Verb",
+    'n': "Noun",
 }
 
+    
 class BigramChunker(nltk.ChunkParserI):
     def __init__(self, train_sents):
         train_data = [[(t,c) for w,t,c in nltk.chunk.tree2conlltags(sent)]
@@ -68,19 +78,7 @@ class BigramChunker(nltk.ChunkParserI):
         return nltk.chunk.conlltags2tree(conlltags)
     
 
-def process_input(inpt):
-    words = nltk.pos_tag(word_tokenize(inpt));
-    chunks = [];
-    
-    grammar = """NP: {<DT|PRP\$>?<JJ.*>*<NN.*>}
-                     {<NNP>+} 
-    """;
-    cp = nltk.RegexpParser(grammar);
-    print(cp.parse(words));   
-                
-def determine_synonym(inpt):
-    return wordnet.synsets(inpt);
-
+            
 def print_synset(inpt):
     print("Possible definitions for this input:");
     for i in wordnet.synsets(inpt):
@@ -88,28 +86,101 @@ def print_synset(inpt):
         print("Word(s) that describe this concept: ");
         for j in i.lemma_names():
             print(j);
-        print(" **** ");
+        print(" ****  " + str(wordnet.synsets(inpt)));
 
         
         
-print("Training chunker...");
-train_sents = conll2000.chunked_sents('train.txt', chunk_types=['NP']);
-test_sents = conll2000.chunked_sents('test.txt', chunk_types=['NP']);  
-chunker = BigramChunker(train_sents)
+def print_chunks(chunks):
+    for i in chunks:
+        if type(i) == nltk.tree.Tree:
+            if i.label() == "NP":
+                print("Noun Phrase:")
+                for j in i:
+                    print("       " + str(j));
+
+            elif i.label() == "VP":
+                print("Verb Phrase:");
+                for j in i:
+                    print("       " + str(j));
+
+            elif i.label() == "PP":
+                print("Preposition Phrase:");
+                for j in i:
+                    print("       " + str(j));
+        else:
+            print("RADICAL!" + str(i));
+        
+
+                
+def disambiguate(chunks, sentence):
+    for i in chunks:
+        if type(i) == nltk.tree.Tree:
+            for j in i:
+                if(j[:2].matches("NN|JJ|VB|RB")):
+                    print("sup");
+            
+    disambiguated_words = list();
+    for i in chunks:
+        print("");
+        
+        
+        
+def convert_POS_to_wn(POS):
+    
+    if POS[:2] == ("NN"):
+        return 'v';
+    elif POS[:2] == ("JJ"):
+        return 's'
+    elif POS[:2] == ("VB"):
+        return 'v'
+    elif POS[:2] == ("RB"):
+        return 'r'
+
+    
+def chunk_sentiment(chunks, sentence):
+    for i in chunks:
+        if type(i) == nltk.tree.Tree:
+            for j in i:
+                if j[1][:2] == "NN" or j[1][:2] == "JJ" or j[1][:2] == "VB" or j[1][:2] == "RB":
+                    print(j);
+                    d = lesk(sentence, j[0], convert_POS_to_wn(j[1]))
+                    print(str(d) + ", " + d.definition());
+                
+        
+def train_ai():        
+    print("Training...");
+    train_sents = conll2000.chunked_sents('train.txt', chunk_types=['NP', 'VP', 'PP']);
+    test_sents = conll2000.chunked_sents('test.txt', chunk_types=['NP', 'VP', 'PP']);  
+    return BigramChunker(train_sents);
+
+
+
+
+
+
+parser = train_ai();
 inpt = input("Enter an English sentence: ");
 
 while(inpt != "quit"):
     
-    grammar1 = """NP: {<DT|PRP\$>?<JJ.*>*<NN.*>}
-                      {<NNP>+} 
-    """;
     
-    words = nltk.pos_tag(word_tokenize(inpt));
-    chunks = chunker.parse(words);
+    #If NP is followed by VB, it's probably the subject.
+    #If NP is preceded by VB, it's probably the object
+    #Question, answer, elaboration
+    
+    sentence = word_tokenize(inpt);
+    #print_synset(sentence[0]);
+    
+    words = nltk.pos_tag(sentence);
+    chunks = parser.parse(words);
+    
+    
+    
+    #disambiguate(chunks, sentence);
+    chunk_sentiment(chunks, sentence);
+    print_chunks(chunks);
 
-
-
-    inpt = input("Enter an English sentence: ");
+    inpt = input();
 
 
 
