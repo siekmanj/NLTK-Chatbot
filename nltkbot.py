@@ -77,7 +77,6 @@ class BigramChunker(nltk.ChunkParserI):
                      in zip(sentence, chunktags)]
         return nltk.chunk.conlltags2tree(conlltags)
     
-
             
 def print_synset(inpt):
     print("Possible definitions for this input:");
@@ -117,8 +116,7 @@ def disambiguate(chunks, sentence):
         if type(i) == nltk.tree.Tree:
             for j in i:
                 if(j[:2].matches("NN|JJ|VB|RB")):
-                    print("sup");
-            
+                    pass; 
     disambiguated_words = list();
     for i in chunks:
         print("");
@@ -142,7 +140,7 @@ def chunk_sentiment(chunks, sentence):
         if type(i) == nltk.tree.Tree:
             for j in i:
                 if j[1][:2] == "NN" or j[1][:2] == "JJ" or j[1][:2] == "VB" or j[1][:2] == "RB":
-                    print(j);
+                    print(j[0]);
                     d = lesk(sentence, j[0], convert_POS_to_wn(j[1]))
                     print(str(d) + ", " + d.definition());
                 
@@ -169,7 +167,6 @@ while(inpt != "quit"):
     #Question, answer, elaboration
     
     sentence = word_tokenize(inpt);
-    #print_synset(sentence[0]);
     
     words = nltk.pos_tag(sentence);
     chunks = parser.parse(words);
